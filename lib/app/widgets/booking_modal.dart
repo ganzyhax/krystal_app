@@ -177,33 +177,56 @@ class _BookingModalState extends State<BookingModal> {
               CustomButton(
                 onPressed: () async {
                   if (selectedStartSlot != null && selectedEndSlot != null) {
-                    // Convert selected start and end times to hours
                     int startHour = int.parse(selectedStartSlot!.split(":")[0]);
                     int endHour = int.parse(selectedEndSlot!.split(":")[0]);
 
-                    // Create a list of time slots to mark as unavailable and add booking details
-                    List<Map<String, dynamic>> slotsToUpdate = [];
-                    for (int hour = startHour; hour <= endHour; hour++) {
-                      String slot = '${hour.toString().padLeft(2, '0')}:00';
-                      slotsToUpdate.add({
-                        'time': slot,
-                        'available': false,
-                        'bookedBy': {
-                          'name': nameController.text,
-                          'phone': phoneController.text,
-                        }
-                      });
-                    }
-
+                    // Format the date to match Firestore document ID format
                     final dateKey =
                         DateFormat('dd-MM-yyyy').format(selectedDate);
                     final docRef =
                         _firestore.collection('booking').doc(dateKey);
 
-                    // Update Firestore to mark the selected time slots as unavailable and add booking details
-                    await docRef.update({
-                      'timeSlots': FieldValue.arrayUnion(slotsToUpdate),
-                    });
+                    try {
+                      // Fetch the document
+                      DocumentSnapshot docSnapshot = await docRef.get();
+
+                      if (docSnapshot.exists) {
+                        List<Map<String, dynamic>> updatedSlots = [];
+                        List<dynamic> timeSlots = docSnapshot['timeSlots'];
+
+                        // Iterate through existing slots and update within the selected time range
+                        for (var slot in timeSlots) {
+                          String time = slot['time'];
+                          int slotHour = int.parse(time.split(":")[0]);
+
+                          if (slotHour >= startHour && slotHour <= endHour) {
+                            // Update this slot to make it unavailable with the booking details
+                            updatedSlots.add({
+                              'time': time,
+                              'available': false,
+                              'bookedBy': {
+                                'name': nameController.text,
+                                'phone': phoneController.text,
+                              }
+                            });
+                          } else {
+                            // Keep the slot as is
+                            updatedSlots.add(slot);
+                          }
+                        }
+
+                        // Update Firestore with the modified slots
+                        await docRef.update({
+                          'timeSlots': updatedSlots,
+                        });
+
+                        print("Booking slots updated successfully.");
+                      } else {
+                        print("No booking slots found for this date.");
+                      }
+                    } catch (error) {
+                      print("Failed to update booking slots: $error");
+                    }
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
