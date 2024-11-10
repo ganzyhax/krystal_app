@@ -87,7 +87,7 @@ class HomeScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Text(
-                              'Krystal Sauna',
+                              'Cryhsta Sauna',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 24,
@@ -155,7 +155,18 @@ class HomeScreen extends StatelessWidget {
                             child: CustomButton(
                                 text: 'Забронировать',
                                 onPressed: () {
-                                  showBookingModal(context);
+                                  showModalBottomSheet(
+                                    context: context,
+                                    backgroundColor: Colors.white,
+                                    isScrollControlled: true,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.vertical(
+                                          top: Radius.circular(20)),
+                                    ),
+                                    builder: (BuildContext context) {
+                                      return BookingModal();
+                                    },
+                                  );
                                 })),
                         // Package Pricing Section
                         SizedBox(height: 24),
