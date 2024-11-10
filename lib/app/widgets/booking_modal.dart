@@ -48,7 +48,6 @@ class _BookingModalState extends State<BookingModal> {
     setState(() {});
   }
 
-  // Check if the consecutive time slots are available for the selected duration
   List<String> _getAvailableIntervals(int duration) {
     List<String> availableIntervals = [];
 
@@ -76,7 +75,6 @@ class _BookingModalState extends State<BookingModal> {
     return availableIntervals;
   }
 
-  // Divide available intervals into categories
   Map<String, List<String>> _getCategorizedIntervals(int duration) {
     List<String> availableIntervals = _getAvailableIntervals(duration);
 
@@ -177,9 +175,46 @@ class _BookingModalState extends State<BookingModal> {
                   'Ночь', categorizedIntervals['Night']),
               SizedBox(height: 16),
               CustomButton(
-                onPressed: () {
+                onPressed: () async {
                   if (selectedStartSlot != null && selectedEndSlot != null) {
-                    // CHAT GPT here must change in firestore available to false and add additional fields name and phone
+                    // Convert selected start and end times to hours
+                    int startHour = int.parse(selectedStartSlot!.split(":")[0]);
+                    int endHour = int.parse(selectedEndSlot!.split(":")[0]);
+
+                    // Create a list of time slots to mark as unavailable and add booking details
+                    List<Map<String, dynamic>> slotsToUpdate = [];
+                    for (int hour = startHour; hour <= endHour; hour++) {
+                      String slot = '${hour.toString().padLeft(2, '0')}:00';
+                      slotsToUpdate.add({
+                        'time': slot,
+                        'available': false,
+                        'bookedBy': {
+                          'name': nameController.text,
+                          'phone': phoneController.text,
+                        }
+                      });
+                    }
+
+                    final dateKey =
+                        DateFormat('dd-MM-yyyy').format(selectedDate);
+                    final docRef =
+                        _firestore.collection('booking').doc(dateKey);
+
+                    // Update Firestore to mark the selected time slots as unavailable and add booking details
+                    await docRef.update({
+                      'timeSlots': FieldValue.arrayUnion(slotsToUpdate),
+                    });
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Бронирование успешно!',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                    // Close the modal after booking
+                    Navigator.pop(context);
                   }
                 },
                 text: 'Забронировать',
@@ -254,7 +289,22 @@ class _BookingModalState extends State<BookingModal> {
         Wrap(
           spacing: 8.0, // space between items
           runSpacing: 8.0, // space between lines
-          children: intervals.map((interval) {
+          children: intervals.where((interval) {
+            // Filter out unavailable slots
+            int startHour = int.parse(interval.split(" - ")[0].split(":")[0]);
+            int endHour = int.parse(interval.split(" - ")[1].split(":")[0]);
+
+            // Check availability of all slots in the range
+            for (int i = startHour; i <= endHour; i++) {
+              String slot = '${i.toString().padLeft(2, '0')}:00';
+              if (timeSlots.any((element) =>
+                  element['time'] == slot && !element['available'])) {
+                return false; // If any slot in the range is unavailable
+              }
+            }
+
+            return true;
+          }).map((interval) {
             bool isSelected = selectedStartSlot == interval.split(" - ")[0];
 
             return GestureDetector(
@@ -282,8 +332,4 @@ class _BookingModalState extends State<BookingModal> {
       ];
     }
   }
-}
-
-void main() {
-  runApp(MaterialApp(home: BookingModal()));
 }

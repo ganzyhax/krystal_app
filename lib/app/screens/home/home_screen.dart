@@ -37,7 +37,22 @@ class HomeScreen extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    CustomButton(text: 'Забронировать', onPressed: () {}),
+                    CustomButton(
+                        text: 'Забронировать',
+                        onPressed: () {
+                          showModalBottomSheet(
+                            context: context,
+                            backgroundColor: Colors.white,
+                            isScrollControlled: true,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(20)),
+                            ),
+                            builder: (BuildContext context) {
+                              return BookingModal();
+                            },
+                          );
+                        }),
                     SizedBox(height: 4),
                     Row(
                       children: [
